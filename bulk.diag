@@ -1,0 +1,53 @@
+
+*** 18:10:31 *** 
+Starting Nastran Exporter
+
+*** 18:10:31 *** 
+Writing file C:\Users\tobic\OneDrive\Documentos\Elementos finitos\Trabajo 
+Practico 3\pepe\bulk.dat
+ 
+*** 18:10:31 *** 
+Writing SIMCENTER NASTRAN 2412.0 compatible deck
+
+*** 18:10:31 *** 
+ERROR : At least one element in mesh 2d_mapped_mesh(1) referencing property 
+        PPLANE2 has no inherited material
+ 
+*** 18:10:31 *** 
+Writing Bulk Data section
+
+*** 18:10:31 *** 
+Writing Nodes
+
+*** 18:10:31 *** 
+Writing Elements
+
+*** 18:10:31 *** 
+Writing Physical Properties
+
+*** 18:10:31 *** 
+Writing Materials
+
+*** 18:10:31 *** 
+Writing Degree-of-Freedom Sets
+
+*** 18:10:31 *** 
+Writing Coordinate Systems
+
+*** 18:10:31 *** 
+Summary of Bulk Data cards written
+
++----------+----------+
+|   NAME   |  NUMBER  |
++----------+----------+
+| CPLSTN3  | 12       |
+| GRID     | 12       |
+| PPLANE   | 1        |
++----------+----------+
+
+*** 18:10:31 *** 
+1 error issued
+
+*** 18:10:31 *** 
+Error writing Nastran file
+
