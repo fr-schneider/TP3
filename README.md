@@ -9,3 +9,4 @@ apoyo fijo a la derechay modvil en el resto de puntos
 Modelado
 Tension plana vs Deformacion plana?
 si asumo el laterales infinitamente rigidos deformacion plana (creo que la mas logica)
+Esperar F roce y futuras clases
