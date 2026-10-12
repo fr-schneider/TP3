@@ -27,3 +27,10 @@ Funciones de forma:
         r y s, coordenadas para q de integracion
         N nro natural N1 es 1, N2 es 2...
         Devuelve un vector donde cada posicion son [dN1/dr(r,s) dN1/ds(r,s)] 
+
+Integracion
+    q, w = gauss(element,orden)
+        element es el elemento que se desea integrar
+        orden es el orden de la aproximacion
+        q son las coordenadas e los puntos de gauss es una tupla de tuplas, cada una son un par de coordenadas
+        w peso de cada punto, es solo un numero
