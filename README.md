@@ -60,4 +60,18 @@ Documentacion:
         ke(element,orden,coord_node)
             devuelve la matriz de rigidez del elemento usando gauss de orden n
             coord_node son las coordenadas de los nodos
+    
+    Tensiones
+        gauss_stress(element,orden,coord_node,d)
+            element es el elemento a calcular tensiones
+            orden es el orden de integracion de gauss
+            coord_node son las coordenadas globales de los nodos
+            d son los desplazamientos nodales 
+
+        node_stress(element,coord_node,d)
+
+            element es el elemento a calcular tensiones
+            coord_node son las coordenadas globales de los nodos
+            d son los desplazamientos nodales
+            devuelve una matriz con fila: sigmax,sigmay..., y cada columna un ndodo
             

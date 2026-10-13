@@ -8,6 +8,7 @@ class tri_cst:
         self.ndofs=6
         self.mat=material
         self.C=material.constitutive(tipo)
+        self.node_nat_coord=((0,0),(1,0),(0,1))
 
     def shape(self,r,s,N):
         if N==1:
@@ -35,6 +36,7 @@ class tri_lst:
         self.ndofs = 12
         self.mat=material
         self.C=material.constitutive(tipo)
+        self.node_nat_coord=((0,0),(1,0),(0,1),(0.5,0),(0.5,0.5),(0,0.5))
 
     def shape(self, r, s, N):
         L1 = 1 - r - s
@@ -73,6 +75,7 @@ class quad_q4:
         self.ndofs = 8
         self.mat=material
         self.C=material.constitutive(tipo)
+        self.node_nat_coord=((-1,-1),(1,-1),(1,1),(-1,1))
 
 
     def shape(self, r, s, N):
@@ -105,6 +108,8 @@ class quad_q8:
         self.ndofs = 16
         self.mat = material
         self.C = material.constitutive(tipo)
+        self.node_nat_coord=((-1,-1),(1,-1),(1,1),(-1,1),(0,-1),(1,0),(0,1),(-1,0))
+
 
     def shape(self, r, s, N):
 
@@ -147,6 +152,8 @@ class quad_q9:
         self.ndofs = 18
         self.mat = material
         self.C = material.constitutive(tipo)
+        self.node_nat_coord=((-1,-1),(1,-1),(1,1),(-1,1),(0,-1),(1,0),(0,1),(-1,0),(0,0))
+
 
     def shape(self, r, s, N):
 
