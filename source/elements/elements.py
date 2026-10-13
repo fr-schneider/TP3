@@ -29,7 +29,7 @@ class tri_lst:
     def __init__(self, global_id, node_global_ids):
         self.id = global_id
         self.node = node_global_ids
-        self.n_node=3
+        self.n_node=6
         self.dofs_node = 2
         self.ndofs = 12
 
@@ -89,29 +89,27 @@ class quad_q4:
     
     
 class quad_q8:
-    # Cuadrilatero de 8 nodos (Q4)
+    # Cuadrilatero de 8 nodos (Q8)
+
     def __init__(self, global_id, node_global_ids):
         self.id = global_id
         self.node = node_global_ids
         self.n_node = 8
         self.dofs_node = 2
-        self.ndofs = 14
+        self.ndofs = 16
 
     def shape(self, r, s, N):
-        shapes = [
-            0.25 * (1-r) * (1-s),
-            0.25 * (1+r) * (1-s),
-            0.25 * (1+r) * (1+s),
-            0.25 * (1-r) * (1+s)
-        ]
+
+        N5 = 0.5 * (1-r**2) * (1-s)
+        N6 = 0.5 * (1+r) * (1-s**2)
+        N7 = 0.5 * (1-r**2) * (1+s)
+        N8 = 0.5 * (1-r) * (1-s**2)
+
+        N1 = 0.25 * (1-r) * (1-s) - 0.5 * (N8+N5)
+        N2 = 0.25 * (1+r) * (1-s) - 0.5 * (N5+N6)
+        N3 = 0.25 * (1+r) * (1+s) - 0.5 * (N6+N7)
+        N4 = 0.25 * (1-r) * (1+s) - 0.5 * (N7+N8)
+
+        shapes = [N1, N2, N3, N4, N5, N6, N7, N8]
+
         return shapes[N-1]
-
-    def dshape(self, r, s, N):
-        dshapes = [
-            [-0.25*(1-s), -0.25*(1-r)],
-            [ 0.25*(1-s), -0.25*(1+r)],
-            [ 0.25*(1+s),  0.25*(1+r)],
-            [-0.25*(1+s),  0.25*(1-r)]
-        ]
-        return dshapes[N-1]
-
