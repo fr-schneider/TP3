@@ -1,12 +1,13 @@
 class tri_cst:
 #tri_cst: triangular de 3 nodos (cst).
-    def __init__(self,global_id,node_global_ids):
+    def __init__(self,global_id,node_global_ids,material,tipo):
         self.id=global_id
         self.node=node_global_ids
         self.n_node=3
         self.dofs_node=2
         self.ndofs=6
-
+        self.mat=material
+        self.C=material.constitutive(tipo)
 
     def shape(self,r,s,N):
         if N==1:
@@ -26,12 +27,14 @@ class tri_cst:
 
 class tri_lst:
 #triangular de 6 nodos.
-    def __init__(self, global_id, node_global_ids):
+    def __init__(self, global_id, node_global_ids,material,tipo):
         self.id = global_id
         self.node = node_global_ids
         self.n_node=3
         self.dofs_node = 2
         self.ndofs = 12
+        self.mat=material
+        self.C=material.constitutive(tipo)
 
     def shape(self, r, s, N):
         L1 = 1 - r - s
@@ -62,12 +65,15 @@ class tri_lst:
     
 class quad_q4:
     # Cuadrilatero de 4 nodos (Q4)
-    def __init__(self, global_id, node_global_ids):
+    def __init__(self, global_id, node_global_ids,material,tipo):
         self.id = global_id
         self.node = node_global_ids
         self.n_node = 4
         self.dofs_node = 2
         self.ndofs = 8
+        self.mat=material
+        self.C=material.constitutive(tipo)
+
 
     def shape(self, r, s, N):
         shapes = [
@@ -90,12 +96,14 @@ class quad_q4:
     
 class quad_q8:
     # Cuadrilatero de 8 nodos (Q4)
-    def __init__(self, global_id, node_global_ids):
+    def __init__(self, global_id, node_global_ids,material,tipo):
         self.id = global_id
         self.node = node_global_ids
         self.n_node = 8
         self.dofs_node = 2
         self.ndofs = 14
+        self.mat=material
+        self.C=material.constitutive(tipo)
 
     def shape(self, r, s, N):
         shapes = [
