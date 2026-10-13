@@ -23,6 +23,8 @@ Documentacion:
         tri_lst: triangular de 6 noodos (lst) (1,2,3) vertices, (4,5,6) los del medio.
         quad_q4: Cuadrangular de 4 nodos
         quad_q8: Cuadrangular de 8 nodos
+        quad_q9: Cuadrangular de 9 nodos
+
 
         Definicion:
 
