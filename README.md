@@ -13,9 +13,11 @@ Esperar F roce y futuras clases
 
 Documentacion:
 Elementos
+
     tri_cst: triangular de 3 nodos (cst)
     tri_lst: triangular de 6 noodos (lst) (1,2,3) vertices, (4,5,6) los del medio.
 Funciones de forma:
+
     shape(self,r,s,N):
         Self: elemento
         r y s, coordenadas para q de integracion
@@ -29,8 +31,15 @@ Funciones de forma:
         Devuelve un vector donde cada posicion son [dN1/dr(r,s) dN1/ds(r,s)] 
 
 Integracion
+
     q, w = gauss(element,orden)
+
         element es el elemento que se desea integrar
         orden es el orden de la aproximacion
         q son las coordenadas e los puntos de gauss es una tupla de tuplas, cada una son un par de coordenadas
         w peso de cada punto, es solo un numero
+
+    ke(element,orden,coord_node)
+        devuelve la matriz de rigidez del elemento usando gauss de orden n
+        coord_node son las coordenadas de los nodos
+        ((IMPORTANTE, Le falta crear el constitutivo a los elementos de momento lo llama cono element.C pero hay que ver como))
