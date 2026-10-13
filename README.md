@@ -12,25 +12,50 @@ si asumo el laterales infinitamente rigidos deformacion plana (creo que la mas l
 Esperar F roce y futuras clases
 
 Documentacion:
-Elementos
-    tri_cst: triangular de 3 nodos (cst)
-    tri_lst: triangular de 6 noodos (lst) (1,2,3) vertices, (4,5,6) los del medio.
-Funciones de forma:
-    shape(self,r,s,N):
-        Self: elemento
-        r y s, coordenadas para q de integracion
-        N nro natural N1 es 1, N2 es 2...
-        Devuelve el resultado de evaluar la funcion en (r,s)
+    Material:
+        LinearElastic(E,nu)
+            E: Modulo de young
+            nu: Coeficiente de Poisson
+            self.(Tipo): devuelve el constitutivo tipo tension plano (tipo='Plane_stress') o deformacion plana (tipo='Plane_strain')
 
-    dshape(self,r,s,N,):
-        Self: elemento
-        r y s, coordenadas para q de integracion
-        N nro natural N1 es 1, N2 es 2...
-        Devuelve un vector donde cada posicion son [dN1/dr(r,s) dN1/ds(r,s)] 
+    Elementos:
+        tri_cst: triangular de 3 nodos (cst)
+        tri_lst: triangular de 6 noodos (lst) (1,2,3) vertices, (4,5,6) los del medio.
+        quad_q4: Cuadrangular de 4 nodos
+        quad_q8: Cuadrangular de 8 nodos
 
-Integracion
-    q, w = gauss(element,orden)
-        element es el elemento que se desea integrar
-        orden es el orden de la aproximacion
-        q son las coordenadas e los puntos de gauss es una tupla de tuplas, cada una son un par de coordenadas
-        w peso de cada punto, es solo un numero
+        Definicion:
+
+            elemento(global_id,node_global_ids,material,tipo)
+            global_id:nro de elemento (elemento.id)
+            node_global_ids: id de los nodos (elemento.node)
+            material: Clase de acuerdo a Linear_elastic
+            tipo: analisis del tipo tension plano (tipo='Plane_stress') o deformacion plana (tipo='Plane_strain')
+
+        Funciones de forma:
+        
+            shape(self,r,s,N):
+                Self: elemento
+                r y s, coordenadas para q de integracion
+                N nro natural N1 es 1, N2 es 2...
+                Devuelve el resultado de evaluar la funcion en (r,s)
+
+            dshape(self,r,s,N,):
+                Self: elemento
+                r y s, coordenadas para q de integracion
+                N nro natural N1 es 1, N2 es 2...
+                Devuelve un vector donde cada posicion son [dN1/dr(r,s) dN1/ds(r,s)] 
+
+    Integracion
+
+        q, w = gauss(element,orden)
+
+            element es el elemento que se desea integrar
+            orden es el orden de la aproximacion
+            q son las coordenadas e los puntos de gauss es una tupla de tuplas, cada una son un par de coordenadas
+            w peso de cada punto, es solo un numero
+
+        ke(element,orden,coord_node)
+            devuelve la matriz de rigidez del elemento usando gauss de orden n
+            coord_node son las coordenadas de los nodos
+            
