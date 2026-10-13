@@ -1,12 +1,12 @@
 import numpy as np
-
+  
 class LinearElastic:
     def __init__(self, E, nu):
         self.E = E
         self.nu = nu
 
 
-def constitutive(self, tipo):
+    def constitutive(self, tipo):
         if tipo == 'Plane_stress':
             factor = self.E / (1.0 - self.nu**2)
             return factor * np.array([[1.0,       self.nu,    0.0],
