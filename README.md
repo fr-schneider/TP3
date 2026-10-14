@@ -74,4 +74,7 @@ Documentacion:
             coord_node son las coordenadas globales de los nodos
             d son los desplazamientos nodales
             devuelve una matriz con fila: sigmax,sigmay..., y cada columna un ndodo
-            
+    Patch test 
+        para cada tipo de elemento triangular o cuadrangular evaluo un patch test diferente
+        importo librerias de elements.py para sacar sus caracterisiticas y funciones de forma, y comienzo a codear
+        Al momento de ensamblar considero que el nodo del centro comparte rigidez con los demas nodos por eso ensamblo las matrices de rigidez

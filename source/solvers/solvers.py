@@ -1,4 +1,4 @@
-from gauss_integration import gauss
+from .gauss_integration import gauss
 import numpy as np
 
 def ke(element,orden,coord_node):
