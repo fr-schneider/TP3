@@ -120,6 +120,20 @@ def node_stress(element,coord_node,d):
                 sigma[:,i]+=sigma_gauss[:,j]*N_j #voy sumando
         return sigma
 
+    elif n_nodos==6:
+        orden=2
+        sigma_gauss, q=gauss_stress(element,orden,coord_node,d)
+
+        #Matriz extrapolacion no del cook, en el cook no encontre como hacerla
+        E=np.array([[ 2.5, -0.5, -0.5],
+                    [-0.5,  2.5, -0.5],
+                    [-0.5, -0.5,  2.5],
+                    [ 1.0,  1.0, -1.0],
+                    [-1.0,  1.0,  1.0],
+                    [ 1.0, -1.0,  1.0]])
+
+        return sigma_gauss@E.T
+
 
             
 

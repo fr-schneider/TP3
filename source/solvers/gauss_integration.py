@@ -8,7 +8,7 @@ def gauss(element, n):
         elif n == 2:
             return ((2/3, 1/6), (1/6, 2/3), (1/6, 1/6)), (1/3, 1/3, 1/3)
 
-    if element.n_node == 4 or element.n_node == 8:
+    if element.n_node == 4 or element.n_node == 8 or element.n_node==9:
         if n == 1:
             return ((0, 0),), (4,)
         elif n == 2:
