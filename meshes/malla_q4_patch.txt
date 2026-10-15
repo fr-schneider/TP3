@@ -1,0 +1,17 @@
+# n_nodos  n_elementos  dimension
+9 4 2
+# id_nodo  x  y
+1 0.0 0.0
+2 10.0 0.0
+3 10.0 10.0
+4 0.0 10.0
+5 4.0 3.0
+6 5.0 0.0
+7 10.0 5.0
+8 5.0 10.0
+9 0.0 5.0
+# id_elem  tipo_elem  nodo1  nodo2  nodo3  nodo4
+1 q4 1 6 5 9
+2 q4 6 2 7 5
+3 q4 5 7 3 8
+4 q4 9 5 8 4
