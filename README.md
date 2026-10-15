@@ -69,7 +69,16 @@ Documentacion:
             d son los desplazamientos nodales 
 
         node_stress(element,coord_node,d)
+            Basicamente para cada tipo de elemento planteo una función de interpolación genérica
+            (polinomio de grado acorde a la cantidad de puntos de Gauss) y le impongo que
+            la función N_i valga 1 en el punto de Gauss i y 0 en los demás puntos de Gauss. 
+            Así obtengo las funciones de interpolación N*_i, que se calculan una sola vez
+            por tipo de elemento.
 
+            Luego evalúo esas funciones en las coordenadas naturales de los nodos (donde
+            quiero la tensión) y las multiplico por las tensiones calculadas en los puntos
+            de Gauss de cada elemento.  
+            
             element es el elemento a calcular tensiones
             coord_node son las coordenadas globales de los nodos
             d son los desplazamientos nodales
@@ -77,4 +86,4 @@ Documentacion:
     Patch test 
         para cada tipo de elemento triangular o cuadrangular evaluo un patch test diferente
         importo librerias de elements.py para sacar sus caracterisiticas y funciones de forma, y comienzo a codear
-        Al momento de ensamblar considero que el nodo del centro comparte rigidez con los demas nodos por eso ensamblo las matrices de rigidez
+        Se consideran las matrices Ke tensiones jacobianos B Matriz deformacion desplazamiento, se establecen condiciones de borde, impongo cargas o fuerzas F para siempre obtener tension sigma x constante, impongo algun nodo en el "centro" del elemento corrido para irregulizar el tamano y forma del elemento
