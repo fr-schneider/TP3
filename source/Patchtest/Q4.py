@@ -32,7 +32,7 @@ nodos = [
 
 # Material
 material = LinearElastic(21000, 0.25)
-tipo = "Plane_stress"
+tipo = "Plane_strain"
 espesor = 1.0
 
 # Elementos Q4

@@ -60,6 +60,33 @@ Documentacion:
         ke(element,orden,coord_node)
             devuelve la matriz de rigidez del elemento usando gauss de orden n
             coord_node son las coordenadas de los nodos
+
+    Cargas
+    
+        surface_load_2d(element, node_coord, load_node_id, traction_nodes):
+
+        Cargas nodales equivalentes de una traccion superficial sobre un borde
+        del elemento:
+
+            {f_e} = integral_borde  [N]^T {Phi}  * dS
+
+        donde [N] son las funciones de forma del elemento 2D y {Phi} = (tx, ty)
+        es la traccion (fuerza por unidad de superficie) en ejes globales.
+
+        Parametros
+        ----------
+        element        : elemento
+        node_coord     : coordenadas de los nodos del ELEMENTO (n_nodos, 2), igual que en ke
+        load_node_id   : ids LOCALES (0..n_nodos-1) de los nodos del borde cargado.
+                        Los dos primeros son los vertices del borde; si hay un
+                        tercero, es el nodo medio.
+        traction_nodes : (m, 2) traccion (tx, ty) evaluada en cada nodo del borde,
+                        en el mismo orden que load_node_id
+
+
+        Devuelve
+        --------
+        fe : vector de n_ndofs con las fuerzas nodales [u1, v1, u2, v2, ...]
     
     Tensiones
         gauss_stress(element,orden,coord_node,d)

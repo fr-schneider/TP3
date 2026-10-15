@@ -31,7 +31,17 @@ def gauss(element, n):
                     
             return tuple(coords), tuple(weights)
         
-
+def gauss_1d(n):
+    #Retorna puntos y pesos de Gauss para integración 1D en [-1, 1].
+    if n == 1:
+        return (0.0,), (2.0,)
+    elif n == 2:
+        a = 1.0 / math.sqrt(3.0)
+        return (-a, a), (1.0, 1.0)
+    elif n == 3:
+        a = math.sqrt(0.6)
+        return (-a, 0.0, a), (5.0/9.0, 8.0/9.0, 5.0/9.0)
+    
          
     
 
