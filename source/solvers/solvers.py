@@ -84,57 +84,72 @@ def gauss_stress(element,orden,coord_node,d):
 
 
 
-def node_stress(element,coord_node,d):
-    n_nodos=element.n_node
 
-    #Hago caso por caso para cada elemento ( esta medio hardcodedo esto pero bueno)
-    if n_nodos==3:
-        orden=1
-        sigma_gauss, q=gauss_stress(element, orden, coord_node, d)
-        return np.repeat(sigma_gauss, 3, axis=1) #repito para los 3 nodos la misma (constant)
+def node_stress(element, coord_node, d):
+    n_nodos = element.n_node
 
-    if n_nodos==4 or n_nodos==8 or n_nodos==9:
+    # T3: tensiones constantes
+    if n_nodos == 3:
+        orden = 1
+        sigma_gauss, q = gauss_stress(
+            element, orden, coord_node, d
+        )
+        return np.repeat(sigma_gauss, 3, axis=1)
 
-        # Para extrapolar uso segun el orden un factor a distinto
-        if n_nodos==9:
-            orden=3
-            a=np.sqrt(5/3)
-        else:
-            orden=2
-            a=np.sqrt(3)
+    # Q4, Q8 y Q9
+    elif n_nodos in (4, 8, 9):
+        orden = 3 if n_nodos == 9 else 2
 
+        sigma_gauss, q = gauss_stress(
+            element, orden, coord_node, d
+        )
 
-        #Calculo las tensiones en los puntos de gauss
-        sigma_gauss, q= gauss_stress(element, orden, coord_node, d)
+        q = np.asarray(q)
+        coord = np.asarray(element.node_nat_coord)
 
-        #preparo el bucle
-        sigma=np.zeros((3,n_nodos))
-        coord=element.node_nat_coord
-        
-        for i, (ksi,eta) in enumerate(coord):
-            r=ksi*a #r es coord del nodo en el sistema*
-            s=eta*a
+        def base(x, y):
+            if n_nodos == 9:
+                return np.column_stack((
+                    np.ones_like(x), x, y, x*y,
+                    x**2, y**2, x**2*y,
+                    x*y**2, x**2*y**2
+                ))
 
-            for j in range(len(q)):
-                N_j=element.shape(r,s,j+1) #Evaluo r,s de sistema*
-                sigma[:,i]+=sigma_gauss[:,j]*N_j #voy sumando
-        return sigma
+            return np.column_stack((
+                np.ones_like(x), x, y, x*y
+            ))
 
-    elif n_nodos==6:
-        orden=2
-        sigma_gauss, q=gauss_stress(element,orden,coord_node,d)
+        P = base(q[:, 0], q[:, 1])
+        Pn = base(coord[:, 0], coord[:, 1])
 
-        #Matriz extrapolacion no del cook, en el cook no encontre como hacerla
-        E=np.array([[ 2.5, -0.5, -0.5],
-                    [-0.5,  2.5, -0.5],
-                    [-0.5, -0.5,  2.5],
-                    [ 1.0,  1.0, -1.0],
-                    [-1.0,  1.0,  1.0],
-                    [ 1.0, -1.0,  1.0]])
+        E = Pn @ np.linalg.inv(P)
 
-        return sigma_gauss@E.T
+        return sigma_gauss @ E.T
 
+    # T6
+    elif n_nodos == 6:
+        orden = 2
 
-            
+        sigma_gauss, q = gauss_stress(
+            element, orden, coord_node, d
+        )
 
-    
+        q = np.asarray(q)
+        coord = np.asarray(element.node_nat_coord)
+
+        P = np.column_stack((
+            np.ones(3), q[:, 0], q[:, 1]
+        ))
+
+        Pn = np.column_stack((
+            np.ones(n_nodos),
+            coord[:, 0],
+            coord[:, 1]
+        ))
+
+        E = Pn @ np.linalg.inv(P)
+
+        return sigma_gauss @ E.T
+
+    else:
+        raise ValueError("Tipo de elemento no soportado")
