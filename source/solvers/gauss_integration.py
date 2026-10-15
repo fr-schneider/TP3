@@ -36,7 +36,7 @@ def gauss(element, n):
 
             return tuple(coords), tuple(weights)
 
-raise ValueError("Orden de integración no soportado")
+    raise ValueError("Orden de integración no soportado")
         
 def gauss_1d(n):
     #Retorna puntos y pesos de Gauss para integración 1D en [-1, 1].
