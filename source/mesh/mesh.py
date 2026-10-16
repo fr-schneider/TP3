@@ -1,6 +1,12 @@
+from pathlib import Path
+import sys
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from source.mesh.node import Node
 from source.solvers.solvers import node_stress, ke
-import numpy as np
+
 
 class Mesh:
     def __init__(self):
@@ -121,28 +127,27 @@ class Mesh:
 
         return sigma_nodal
     
-    def assemble_stiffness(self, elements, orden, ):
-   
-    #Ensambla la matriz de rigidez global K_global usando Ke existente.
-   
+    def assemble_stiffness(self, elements, orden=2):
+        """
+        Ensambla la matriz de rigidez global K_global usando el orden de integración dado.
+        """
         n_dofs = self.number_of_dofs()
         K_global = np.zeros((n_dofs, n_dofs))
-        coord_global = np.array([[node.x, node.y] for node in self.nodes])
+        coord_global = np.array([[n.x, n.y] for n in self.nodes])
 
         for elem in elements:
             coord_node = coord_global[elem.node]
             
-            
-            Ke = ke(elem,orden,coord_node)  
+            # Llamada a ke con el elemento, orden de integración y coordenadas
+            Ke = ke(elem, orden, coord_node)
 
-            # Mapeo a K_global usando los DOFs globales de tu Mesh
             for i_loc, g_node_i in enumerate(elem.node):
-                dofs_i = self.node_global_dofs(g_node_i)
+                dofs_i = self.node_global_dofs(g_node_i)  # Retorna p. ej. [0, 1]
                 for j_loc, g_node_j in enumerate(elem.node):
-                    dofs_j = self.node_global_dofs(g_node_j)
+                    dofs_j = self.node_global_dofs(g_node_j)  # Retorna p. ej. [2, 3]
 
-                    # Colocamos el bloque 2x2 del par de nodos en K_global
-                    K_global[dofs_i[0]:dofs_i[-1]+1, dofs_j[0]:dofs_j[-1]+1] += Ke[2*i_loc:2*i_loc+2, 2*j_loc:2*j_loc+2]
+                    # np.ix_ arma la grilla de índices globales para el bloque local 2x2
+                    K_global[np.ix_(dofs_i, dofs_j)] += Ke[2 * i_loc : 2 * i_loc + 2, 2 * j_loc : 2 * j_loc + 2]
 
         return K_global
     
@@ -152,7 +157,7 @@ class Mesh:
         
         # Mapa por defecto si no se pasa uno personalizado
         if elem_map is None:
-            from elements import tri_cst, tri_lst, quad_q4, quad_q8, quad_q9
+            from source.elements.elements import tri_cst, tri_lst, quad_q4, quad_q8, quad_q9
 
             elem_map = {
                 "cst": tri_cst,

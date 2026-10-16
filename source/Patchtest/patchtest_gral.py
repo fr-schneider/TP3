@@ -1,7 +1,10 @@
 import numpy as np
+from pathlib import Path
+import sys
 
-# Importaciones de tu librería
-from mesh import Mesh
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from source.mesh.mesh import Mesh
 from source.materials.linear_elastic import LinearElastic
 from source.systems.loads import surface_load_2d
 from source.output.paraview_2d import write_results_2d
@@ -9,109 +12,93 @@ from source.output.paraview_2d import write_results_2d
 
 def main():
     # --------------------------------------------------------------------------
-    # 1. PARÁMETROS DE ENTRADA Y ARCHIVOS
+    # 1. CONFIGURACIÓN DE RUTAS Y CARPETAS
     # --------------------------------------------------------------------------
-    input_file = "malla_input.txt"      # Archivo de malla (Q4, Q8, CST, LST, etc.)
-    output_file = "solucion_2d.vtu"     # Archivo de salida para ParaView
+    # Ubicación actual del script: tp3/source/patchtest/main.py
+    SCRIPT_DIR = Path(__file__).resolve().parent
+    
+    # Raíz del repositorio: subimos 2 niveles (patchtest -> source -> tp3)
+    REPO_ROOT = SCRIPT_DIR.parents[1]
 
-    E = 210000.0     # Módulo de Elasticidad (MPa)
-    nu = 0.3         # Coeficiente de Poisson
-    thickness = 1.0  # Espesor (mm)
-    sigma_0 = 100.0  # Tracción en X = X_max (MPa)
+    # Directorios de entrada y salida
+    MESHES_DIR = REPO_ROOT / "meshes"
+    RESULTS_DIR = REPO_ROOT / "results"
 
-    # --------------------------------------------------------------------------
-    # 2. LECTURA DE MALLA E INSTANCIACIÓN DE ELEMENTOS (GENÉRICO)
-    # --------------------------------------------------------------------------
-    print(f"--> Leyendo malla desde: {input_file}")
-    mesh = Mesh(dofs_per_node=2)
+
+
+    # Definición de archivos
+    input_file = MESHES_DIR / "malla_q4_patch.txt"      # Lee desde tp3/meshes/
+    output_file = RESULTS_DIR / "solucion_2d_q4_patch.vtu"    # Escribe en tp3/results/
+
+    # Convertimos a string por compatibilidad con métodos de lectura/escritura
+    input_path_str = str(input_file)
+    output_path_str = str(output_file)
+
+    E = 210000.0     # MPa
+    nu = 0.3
+    sigma_0 = 100.0  # MPa
+
+    # 1. Lectura de malla y creacion de elementos
+    mesh = Mesh()
     mesh.read(input_file)
+    mesh.dofs_per_node = 2  
 
     material = LinearElastic(E=E, nu=nu)
-    elements = mesh.create_elements(material, tipo_elasticidad="Plane_stress")
+    elements = mesh.create_elements(material, tipo="Plane_stress")
 
     n_dofs = mesh.number_of_dofs()
-    print(f"    Nodos: {mesh.number_of_nodes()} | Elementos: {mesh.number_of_elements()} | DOFs: {n_dofs}")
-
-    # --------------------------------------------------------------------------
-    # 3. ENSAMBLADO DE K_GLOBAL
-    # --------------------------------------------------------------------------
-    print("--> Ensamblando matriz de rigidez K_global...")
-    K_global = mesh.assemble_stiffness(elements, thickness=thickness)
+    coord_global = np.array([[node.x, node.y] for node in mesh.nodes])
+    # 2. Ensamblado de K_global a traves de Mesh
+    K_global = mesh.assemble_stiffness(elements,2)
     F_global = np.zeros(n_dofs)
 
-    # --------------------------------------------------------------------------
-    # 4. CARGA DE SUPERFICIE AUTOMÁTICA EN X = X_max (e.g. X = 1.0 o X_max)
-    # --------------------------------------------------------------------------
-    # Identificamos la coordenada X máxima de la malla
+        # 4. Carga de superficie en el borde derecho (X = X_max)
     x_max = max(node.x for node in mesh.nodes)
-    print(f"--> Aplicando tracción sigma_0 = {sigma_0} MPa en el borde X = {x_max:.2f}...")
-
+    
     for elem in elements:
-        # Buscamos los nodos locales del elemento que están sobre X = X_max
-        load_local_nodes = []
-        for local_idx, g_id in enumerate(elem.node):
-            if np.isclose(mesh.node(g_id).x, x_max):
-                load_local_nodes.append(local_idx)
-
-        # Si el elemento tiene 2 o más nodos en el borde derecho, es una cara cargada
+        coord_node = coord_global[elem.node]
+        load_local_nodes = [
+            loc_idx for loc_idx, g_id in enumerate(elem.node)
+            if np.isclose(mesh.node(g_id).x, x_max)
+        ]
+        
         if len(load_local_nodes) >= 2:
-            # Ordenamos los nodos locales por su coordenada Y creciente para recorrer la cara en orden
-            load_local_nodes_sorted = sorted(
-                load_local_nodes,
-                key=lambda idx: mesh.node(elem.node[idx]).y
-            )
+            load_sorted = sorted(load_local_nodes, key=lambda i: mesh.node(elem.node[i]).y)
+            traction_nodes = np.tile([sigma_0, 0.0], (len(load_sorted), 1))
 
-            # Calculamos la carga de superficie equivalente para este elemento
-            fe_elem = surface_load_2d(
-                elem,
-                elem.coord_node,
-                load_node_id=load_local_nodes_sorted,
-                traction_vec=[sigma_0, 0.0],
-                thickness=thickness
-            )
+            # Calculamos la carga de superficie y la aplanamos a vector 1D
+            fe_elem = surface_load_2d(elem, coord_node, load_sorted, traction_nodes).flatten()
 
-            # Ensamblamos en el vector global F_global
+            # Ensamblado seguro usando los dofs globales del nodo
             for i_loc, g_id in enumerate(elem.node):
-                F_global[2 * g_id]     += fe_elem[2 * i_loc]
-                F_global[2 * g_id + 1] += fe_elem[2 * i_loc + 1]
+                dofs = mesh.node_global_dofs(g_id)
+                F_global[dofs] += fe_elem[2 * i_loc : 2 * i_loc + 2]
 
-    # --------------------------------------------------------------------------
-    # 5. RESTRICCIONES AUTOMÁTICAS EN X = 0 (FIJACIÓN)
-    # --------------------------------------------------------------------------
+    # 4. Apoyos automaticos en X = 0 (fijacion u_x = 0, y apoyo vertical u_y = 0)
     fixed_dofs = []
-
-    # A) Bloqueamos u_x = 0 en TODOS los nodos sobre X = 0
     nodes_x0 = [node for node in mesh.nodes if np.isclose(node.x, 0.0)]
     for node in nodes_x0:
         fixed_dofs.append(2 * node.global_id)  # u_x = 0
-
-    # B) Bloqueamos u_y = 0 en el nodo de X=0 más cercano a Y=0 (evita cuerpo rígido en Y)
-    node_support = min(nodes_x0, key=lambda n: abs(n.y))
-    fixed_dofs.append(2 * node_support.global_id + 1)  # u_y = 0
+    
+    node_y0 = min(nodes_x0, key=lambda n: abs(n.y))
+    fixed_dofs.append(2 * node_y0.global_id + 1)  # u_y = 0 en el nodo base
 
     fixed_dofs = sorted(list(set(fixed_dofs)))
     free_dofs = [dof for dof in range(n_dofs) if dof not in fixed_dofs]
 
-    # --------------------------------------------------------------------------
-    # 6. RESOLUCIÓN DEL SISTEMA REDUCIDO
-    # --------------------------------------------------------------------------
-    print("--> Resolviendo sistema de ecuaciones K * u = F...")
+    # 5. Resolucion K_libre * u_libre = F_libre
     K_free = K_global[np.ix_(free_dofs, free_dofs)]
     F_free = F_global[free_dofs]
-
     u_free = np.linalg.solve(K_free, F_free)
 
     u_global = np.zeros(n_dofs)
     u_global[free_dofs] = u_free
 
-    # --------------------------------------------------------------------------
-    # 7. PROMEDIADO NODAL DE TENSIONES Y EXPORTACIÓN A PARAVIEW
-    # --------------------------------------------------------------------------
-    print("--> Calculando tensiones promediadas y generando archivo para ParaView...")
-    sigma_nodal = compute_nodal_stresses(mesh, elements, u_global)
+    # 6. Promediado nodal de tensiones en la malla
+    sigma_nodal = mesh.compute_nodal_stresses(elements, u_global)
 
+    # 7. Exportacion directa a ParaView
     write_results_2d(output_file, mesh, u_global, nodal_stresses=sigma_nodal)
-    print(f"¡Proceso finalizado! Resultado guardado en: {output_file}")
 
 
 if __name__ == "__main__":

@@ -94,5 +94,6 @@ def surface_load_2d(element, node_coord, load_node_id, traction_nodes):
         for k in range(n_nodos):
             fe[2 * k]     += N[k] * traction_vec[0] * J * w[i]
             fe[2 * k + 1] += N[k] * traction_vec[1] * J * w[i]
+    return fe
 
 
