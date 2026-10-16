@@ -11,7 +11,7 @@ from source.systems.loads import surface_load_2d
 
 malla='represa.txt'
 output='represa.vtu'
-tipo='aca va el plane_strain'
+tipo='Plane_strain'
 orden= 2
 g= 9.81
 h_agua= 25
