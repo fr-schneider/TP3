@@ -1,0 +1,52 @@
+
+*** 00:00:28 *** 
+Starting Nastran Exporter
+
+*** 00:00:28 *** 
+Writing file C:\Users\tobic\TP3\ReadMesh\mesh_dat_files\represa.dat
+
+*** 00:00:28 *** 
+Writing SIMCENTER NASTRAN 2412.0 compatible deck
+
+*** 00:00:28 *** 
+ERROR : At least one element in mesh 2d_mapped_mesh(1) referencing property 
+        PPLANE2 has no inherited material
+ 
+*** 00:00:28 *** 
+Writing Bulk Data section
+
+*** 00:00:28 *** 
+Writing Nodes
+
+*** 00:00:28 *** 
+Writing Elements
+
+*** 00:00:28 *** 
+Writing Physical Properties
+
+*** 00:00:28 *** 
+Writing Materials
+
+*** 00:00:28 *** 
+Writing Degree-of-Freedom Sets
+
+*** 00:00:28 *** 
+Writing Coordinate Systems
+
+*** 00:00:28 *** 
+Summary of Bulk Data cards written
+
++----------+----------+
+|   NAME   |  NUMBER  |
++----------+----------+
+| CPLSTN3  | 12       |
+| GRID     | 12       |
+| PPLANE   | 1        |
++----------+----------+
+
+*** 00:00:28 *** 
+1 error issued
+
+*** 00:00:28 *** 
+Error writing Nastran file
+
