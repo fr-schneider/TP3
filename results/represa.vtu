@@ -23,6 +23,15 @@ AQAAAACAAABgAAAADgAAAA==eJxjZYAAVhrRAAyQAD0=
 <DataArray type="Float64" Name="displacement" NumberOfComponents="3" format="binary">
 AQAAAACAAAAgAQAA3gAAAA==eJy7Ff1VfW3vWofVGzmk42cUHmCAgh51drEQy6UOCcdafy6/1AAXf3AiUGZC71qH88fZ7G7vSnSAiZvyZMU42i112BDPt0P4YBJc3Ft5T7fIs00Oa57HtbIomsLNmTbP3pC5babDlkXshw5s6YCLi0SvuvHHYqlDlWOEzh3JyXDxRrc9/BJ9ax38tkl/OvW9FS6+bfOqKLcVMx2i93NZVoQkw+3dfv2N64enmxz28XZYNioi3BkWz+Cn+GyTg6SQsfXeuDS4Obvkrjltrp7psMlC77Oo4Gy4OABOt1kx
 </DataArray>
+<DataArray type="Float64" Name="sigma_x" format="binary">
+AQAAAACAAABgAAAAawAAAA==eJwBYACf/wDMJPUyZOvA1aZUl8onBcFVvZY9xY38wKvsle1lERDBAKAhZlpT0MBV0gdotp8PwVWRi8mYrP3AqyoqvD4s4sAAjG33y9MTwQDQQULXPODAAACwU88nz8CA5VCZYnIIwYKaMZM=
+</DataArray>
+<DataArray type="Float64" Name="sigma_y" format="binary">
+AQAAAACAAABgAAAAawAAAA==eJwBYACf/9URoH4uLgLByO+WKkDAEsFVOsx0bKEJwRUPZ/IRwxLBVYXeCuln8cA7dUoeqS0TwcDd0JG1ThHBAGQCEYA7+8CAP0y2VPgNwQBWc0DEFfrAAMBi8O7o6sDYvEQrJ2IXwW5ULeo=
+</DataArray>
+<DataArray type="Float64" Name="tau_xy" format="binary">
+AQAAAACAAABgAAAAawAAAA==eJwBYACf/2th4g9DYuZAe6nilcFvA0GrrBq/ZyXYQPXTGzJM8wFBq/bxFY1DzkBVVbgXJE4MQVW8zXONnwNBVfBaiNif50AAfX1RN2wKQQCxwOXp9sHAAMBMBT3310CAO+JL5QURQYt3LLQ=
+</DataArray>
 </PointData>
 </Piece>
 </UnstructuredGrid>

@@ -144,6 +144,8 @@ for elem in elements:
 ##Resolucion k*u=f
 u_global = np.linalg.solve(K_global, F_global)
 
+##Calculo tensiones
+sigma_nodal = mesh.compute_nodal_stresses(elements, u_global)
 ##Exportacion a paraview
 
-write_results_2d(output_path_str, mesh, u_global)
+write_results_2d(output_path_str, mesh, u_global,sigma_nodal)
