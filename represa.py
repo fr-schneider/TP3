@@ -132,7 +132,7 @@ for elem in elements:
         traction_nodes = np.array(traction_nodes)
         
         # Integración de la carga de superficie en el borde
-        fe_water = surface_load_2d(elemento, coord_node, water_sorted, traction_nodes, orden)
+        fe_water = surface_load_2d(elemento, coord_node, water_sorted, traction_nodes)
         
         if fe_water is not None:
             fe_water = fe_water.flatten()
@@ -149,3 +149,52 @@ sigma_nodal = mesh.compute_nodal_stresses(elements, u_global,tipo)
 ##Exportacion a paraview
 
 write_results_2d(output_path_str, mesh, u_global,sigma_nodal)
+
+# MOMENTOS TEORICOS DE LA REPRESA
+
+H = 30.0
+B = 18.0
+C = 3.0
+
+# Area de la seccion
+A_rect = C * H
+A_tri = (B - C) * H / 2
+A_total = A_rect + A_tri
+
+# Centro de gravedad
+x_G = (
+    A_rect * (C / 2)
+    + A_tri * (C + (B - C) / 3)
+) / A_total
+
+# Peso de la represa por metro longitudinal
+W = rho_hormigon * g * A_total
+
+# Momento estabilizante respecto del pie
+brazo_peso = B - x_G
+
+M_estabilizante = W * brazo_peso
+
+# Fuerza resultante del agua
+F_agua = rho_agua * g * h_agua**2 / 2
+
+# Altura de aplicacion de la fuerza del agua
+y_agua = h_agua / 3
+
+# Momento desestabilizante respecto del pie
+M_desestabilizante = F_agua * y_agua
+
+# Factor de seguridad al vuelco
+FS = M_estabilizante / M_desestabilizante
+
+print("\nRESULTADOS DE ESTABILIDAD")
+
+print("Centro de gravedad x_G:", x_G, "m")
+print("Peso de la represa:", W, "N/m")
+print("Brazo del peso:", brazo_peso, "m")
+print("Fuerza del agua:", F_agua, "N/m")
+print("Altura de la fuerza del agua:", y_agua, "m")
+
+print("Momento estabilizante:", M_estabilizante, "N.m/m")
+print("Momento desestabilizante:", M_desestabilizante, "N.m/m")
+print("Factor de seguridad:", FS)
