@@ -50,7 +50,7 @@ mesh.read(input_file)
 mesh.dofs_per_node = 2  
 
 
-elements = mesh.create_elements(tipo)
+elements = mesh.create_elements()
 
 n_dofs = mesh.number_of_dofs()
 coord_global = np.array([[node.x, node.y] for node in mesh.nodes])
@@ -70,7 +70,7 @@ for elemento in elements:
     #Si tiene 2 nodos en la base
         
     if len(base_local_nodes) >= 2:
-        base_sorted = sorted(base_local_nodes, key=lambda i: mesh.node(elem.node[i]).x)
+        base_sorted = sorted(base_local_nodes, key=lambda i: mesh.node(elemento.node[i]).x)
         
         # Calculamos la matriz K_robin elemental para el suelo
         Ke_robin = robin_soil_stiffness_2d(
@@ -132,7 +132,7 @@ for elem in elements:
         traction_nodes = np.array(traction_nodes)
         
         # Integración de la carga de superficie en el borde
-        fe_water = surface_load_2d(elem, coord_node, water_sorted, traction_nodes, orden=orden)
+        fe_water = surface_load_2d(elemento, coord_node, water_sorted, traction_nodes, orden)
         
         if fe_water is not None:
             fe_water = fe_water.flatten()
