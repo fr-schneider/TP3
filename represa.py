@@ -11,13 +11,13 @@ from source.systems.loads import surface_load_2d
 
 malla='represa.txt'
 output='represa.vtu'
-tipo='Plane_strain'
 orden= 2
 g= 9.81
 h_agua= 25
 rho_agua= 1000
 rho_hormigon= 2300
 k_suelo= [200,500] #k_horizontal, k_vertical
+tipo='Plane_strain'
 
 
 
@@ -145,7 +145,7 @@ for elem in elements:
 u_global = np.linalg.solve(K_global, F_global)
 
 ##Calculo tensiones
-sigma_nodal = mesh.compute_nodal_stresses(elements, u_global)
+sigma_nodal = mesh.compute_nodal_stresses(elements, u_global,tipo)
 ##Exportacion a paraview
 
 write_results_2d(output_path_str, mesh, u_global,sigma_nodal)

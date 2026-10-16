@@ -20,9 +20,7 @@ def build_cells_2d(mesh):
 
 
 def write_results_2d(filename, mesh, u, nodal_stresses=None):
-    """
-    Exporta la solución 2D a ParaView mediante meshio.
-    """
+    """Exporta la solución 2D a ParaView mediante meshio."""
     directory = os.path.dirname(filename)
     if directory != "":
         os.makedirs(directory, exist_ok=True)
@@ -38,20 +36,23 @@ def write_results_2d(filename, mesh, u, nodal_stresses=None):
 
     point_data = {"displacement": np.array(displacement)}
 
+    # Integración con compute_nodal_stresses
     if nodal_stresses is not None:
-        stresses = np.asarray(nodal_stresses)
-        if stresses.shape != 3 and stresses.shape == 3:
-            stresses = stresses.T  # Asegura forma (3, N_nodos)
+        if isinstance(nodal_stresses, dict):
+            # Agrega directamente: sigma_x, sigma_y, sigma_z, tau_xy, von_mises
+            point_data.update(nodal_stresses)
+        else:
+            stresses = np.asarray(nodal_stresses)
+            if stresses.ndim == 2 and stresses.shape[0] != 3:
+                stresses = stresses.T
 
-        point_data["sigma_x"] = stresses[0, :]
-        point_data["sigma_y"] = stresses[1, :]
-        point_data["tau_xy"]  = stresses[2, :]
+            names = ["sigma_x", "sigma_y", "tau_xy", "sigma_z", "von_mises"]
+            for i in range(min(len(stresses), len(names))):
+                point_data[names[i]] = stresses[i, :]
 
     cells = build_cells_2d(mesh)
     output_mesh = meshio.Mesh(
-        points=np.array(points),
-        cells=cells,
-        point_data=point_data
+        points=np.array(points), cells=cells, point_data=point_data
     )
 
     output_mesh.write(filename)

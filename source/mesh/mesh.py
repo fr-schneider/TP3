@@ -114,34 +114,64 @@ class Mesh:
         return [node_global_id * self.dofs_per_node + i
                 for i in range(self.dofs_per_node)]
 
-    def compute_nodal_stresses(self, elements, u):
-        """
-        Tensiones nodales promediadas (extrapolacion desde puntos de Gauss).
-        Devuelve sigma_nodal (3 x n_nodos) con [sigma_x, sigma_y, tau_xy].
+    def compute_nodal_stresses(self, elements, u, tipo="Plane_strain"):
+        """Calcula el campo continuo de tensiones nodales promediado globalmente,
+
+        recibiendo 'tipo' ('Plane_strain' / 'Plane_stress') y 'nu' como argumentos.
         """
         n_nodes = self.number_of_nodes()
-        sigma_global = np.zeros((3, n_nodes))
+        sigma_global = np.zeros((3, n_nodes))  # [sigma_x, sigma_y, tau_xy]
         node_count = np.zeros(n_nodes)
 
         for element in elements:
             node_ids = element.node
-            coord_node = np.array([[self.node(i).x, self.node(i).y] for i in node_ids])
+            coord_node = np.array(
+                [[self.node(i).x, self.node(i).y] for i in node_ids]
+            )
 
             dofs = np.hstack([self.node_global_dofs(g) for g in node_ids])
             u_e = u[dofs]
 
+            # Llamada a node_stress original con sus 3 argumentos
             sigma_elemento = node_stress(element, coord_node, u_e)
 
             for j, g_id in enumerate(node_ids):
                 sigma_global[:, g_id] += sigma_elemento[:, j]
                 node_count[g_id] += 1.0
 
-        # Evita dividir por cero en nodos que no pertenecen a ningun elemento
+        # Promedio nodal (suavizado)
         sigma_nodal = np.zeros_like(sigma_global)
         mask = node_count > 0
         sigma_nodal[:, mask] = sigma_global[:, mask] / node_count[mask]
 
-        return sigma_nodal
+        sx = sigma_nodal[0, :]
+        sy = sigma_nodal[1, :]
+        txy = sigma_nodal[2, :]
+
+        # Calculo de sigma_z según el tipo de análisis recibido
+        nu=element.mat.nu
+        es_deformacion_plana = str(tipo).lower() == "plane_strain"
+        sz = nu * (sx + sy) if es_deformacion_plana else np.zeros_like(sx)
+
+        # Tensión equivalente de Von Mises (3D completa)
+        von_mises = np.sqrt(
+            sx**2
+            + sy**2
+            + sz**2
+            - sx * sy
+            - sy * sz
+            - sz * sx
+            + 3.0 * (txy**2)
+        )
+
+        return {
+            "sigma_x": sx,
+            "sigma_y": sy,
+            "sigma_z": sz,
+            "tau_xy": txy,
+            "von_mises": von_mises,
+        }
+
 
     def assemble_stiffness(self, elements, orden=2, espesor=1.0):
         """Ensambla K global con el orden de integracion dado."""
