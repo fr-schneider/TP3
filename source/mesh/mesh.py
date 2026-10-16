@@ -5,71 +5,98 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from source.mesh.node import Node
+from source.materials.linear_elastic import LinearElastic
 from source.solvers.solvers import node_stress, ke
+
+# Cantidad de nodos que exige cada tipo de elemento
+NODOS_POR_TIPO = {
+    "cst": 3, "tri3": 3,
+    "lst": 6, "tri6": 6,
+    "q4": 4, "quad4": 4,
+    "q8": 8, "quad8": 8,
+    "q9": 9, "quad9": 9,
+}
+
+# Formato del archivo:
+#   n_nodos n_elementos dim n_materiales
+#   (n_materiales lineas)  id E nu estado        ej: 1 21000 0.25 Plane_stress
+#   (n_nodos lineas)       id x y
+#   (n_elementos lineas)   id tipo id_material nodo1 nodo2 ...
+# Los comentarios empiezan con '#'.
 
 
 class Mesh:
     def __init__(self):
         self.dim = 0
-        self.dofs_per_node = 0
+        self.dofs_per_node = 2
         self.nodes = []
+        self.materials = {}          # id -> (objeto material, estado)
         self.element_global_ids = []
         self.element_types = []
+        self.element_materials = []  # id de material por elemento
         self.connectivity = []
 
     def read(self, filename):
-        file = open(filename, "r")
-
         lines = []
-
-        for raw_line in file:
-            line = raw_line.split("#")[0]
-            line = line.strip()
-
-            if line != "":
-                lines.append(line)
-
-        file.close()
+        with open(filename, "r") as file:
+            for raw_line in file:
+                line = raw_line.split("#")[0].strip()
+                if line != "":
+                    lines.append(line)
 
         header = lines[0].split()
-
         n_nodes = int(header[0])
         n_elements = int(header[1])
-        dim = int(header[2])
-
-        self.dim = dim
+        self.dim = int(header[2])
+        n_materials = int(header[3])
+        self.dofs_per_node = 2
 
         line_number = 1
 
+        # Materiales
+        for _ in range(n_materials):
+            v = lines[line_number].split()
+            line_number += 1
+            mat_id = int(v[0])
+            self.materials[mat_id] = (
+                LinearElastic(float(v[1]), float(v[2])),
+                v[3],
+            )
+
+        # Nodos
         for i in range(n_nodes):
             values = lines[line_number].split()
-            line_number = line_number + 1
+            line_number += 1
 
             global_id = int(values[0]) - 1
-
             if global_id != i:
                 raise ValueError("Unexpected node numbering")
 
-            x = float(values[1])
-            y = float(values[2])
+            self.nodes.append(Node(global_id, float(values[1]), float(values[2])))
 
-            self.nodes.append(Node(global_id, x, y))
-
-        for i in range(n_elements):
+        # Elementos
+        for _ in range(n_elements):
             values = lines[line_number].split()
-            line_number = line_number + 1
+            line_number += 1
 
-            element_global_id = int(values[0]) - 1
-            element_type = values[1]
+            element_type = values[1].lower()
+            mat_id = int(values[2])
+            conn = [int(x) - 1 for x in values[3:]]
 
-            element_conn = []
+            if element_type not in NODOS_POR_TIPO:
+                raise ValueError(f"Elemento {values[0]}: tipo '{element_type}' no soportado")
+            if len(conn) != NODOS_POR_TIPO[element_type]:
+                raise ValueError(
+                    f"Elemento {values[0]}: {element_type} requiere "
+                    f"{NODOS_POR_TIPO[element_type]} nodos, hay {len(conn)}"
+                )
+            if mat_id not in self.materials:
+                raise ValueError(f"Elemento {values[0]}: material {mat_id} no definido")
 
-            for j in range(2, len(values)):
-                element_conn.append(int(values[j]) - 1)
-
-            self.element_global_ids.append(element_global_id)
+            self.element_global_ids.append(int(values[0]) - 1)
             self.element_types.append(element_type)
-            self.connectivity.append(element_conn)
+            self.element_materials.append(mat_id)
+            self.connectivity.append(conn)
 
     def number_of_nodes(self):
         return len(self.nodes)
@@ -84,105 +111,105 @@ class Mesh:
         return self.number_of_nodes() * self.dofs_per_node
 
     def node_global_dofs(self, node_global_id):
-        dofs = []
-
-        for i in range(self.dofs_per_node):
-            dofs.append(node_global_id * self.dofs_per_node + i)
-
-        return dofs
-
-
+        return [node_global_id * self.dofs_per_node + i
+                for i in range(self.dofs_per_node)]
 
     def compute_nodal_stresses(self, elements, u):
         """
-        Calcula las tensiones continuas promediadas en los nodos de la malla
-        extrapolando las tensiones de cada elemento (Cook, Sec. 3.12).
-        
-        Devuelve:
-        - sigma_nodal: Matriz (3 x n_nodos) con [sigma_x, sigma_y, tau_xy] promediados.
+        Tensiones nodales promediadas (extrapolacion desde puntos de Gauss).
+        Devuelve sigma_nodal (3 x n_nodos) con [sigma_x, sigma_y, tau_xy].
         """
         n_nodes = self.number_of_nodes()
         sigma_global = np.zeros((3, n_nodes))
         node_count = np.zeros(n_nodes)
 
         for element in elements:
-            # 1. Coordenadas y desplazamientos locales del elemento
             node_ids = element.node
             coord_node = np.array([[self.node(i).x, self.node(i).y] for i in node_ids])
-            
-            # Extraemos los DOFs del elemento desde u global
-            dofs = np.hstack([[2 * g, 2 * g + 1] for g in node_ids])
+
+            dofs = np.hstack([self.node_global_dofs(g) for g in node_ids])
             u_e = u[dofs]
 
-            # 2. Tu funcion node_stress evalua las tensiones en los nodos del elemento (3 x n_nodos_elem)
             sigma_elemento = node_stress(element, coord_node, u_e)
 
-            # 3. Acumulamos las tensiones y el conteo de apariciones de cada nodo
             for j, g_id in enumerate(node_ids):
                 sigma_global[:, g_id] += sigma_elemento[:, j]
                 node_count[g_id] += 1.0
 
-        # 4. Promediamos dividiendo por la cantidad de elementos compartidos por cada nodo
-        sigma_nodal = sigma_global / node_count
+        # Evita dividir por cero en nodos que no pertenecen a ningun elemento
+        sigma_nodal = np.zeros_like(sigma_global)
+        mask = node_count > 0
+        sigma_nodal[:, mask] = sigma_global[:, mask] / node_count[mask]
 
         return sigma_nodal
-    
-    def assemble_stiffness(self, elements, orden=2):
-        """
-        Ensambla la matriz de rigidez global K_global usando el orden de integración dado.
-        """
+
+    def assemble_stiffness(self, elements, orden=2, espesor=1.0):
+        """Ensambla K global con el orden de integracion dado."""
         n_dofs = self.number_of_dofs()
         K_global = np.zeros((n_dofs, n_dofs))
         coord_global = np.array([[n.x, n.y] for n in self.nodes])
 
         for elem in elements:
             coord_node = coord_global[elem.node]
-            
-            # Llamada a ke con el elemento, orden de integración y coordenadas
-            Ke = ke(elem, orden, coord_node)
+            Ke = espesor * ke(elem, orden, coord_node)
 
-            for i_loc, g_node_i in enumerate(elem.node):
-                dofs_i = self.node_global_dofs(g_node_i)  # Retorna p. ej. [0, 1]
-                for j_loc, g_node_j in enumerate(elem.node):
-                    dofs_j = self.node_global_dofs(g_node_j)  # Retorna p. ej. [2, 3]
-
-                    # np.ix_ arma la grilla de índices globales para el bloque local 2x2
-                    K_global[np.ix_(dofs_i, dofs_j)] += Ke[2 * i_loc : 2 * i_loc + 2, 2 * j_loc : 2 * j_loc + 2]
+            for i_loc, g_i in enumerate(elem.node):
+                dofs_i = self.node_global_dofs(g_i)
+                for j_loc, g_j in enumerate(elem.node):
+                    dofs_j = self.node_global_dofs(g_j)
+                    K_global[np.ix_(dofs_i, dofs_j)] += Ke[
+                        2 * i_loc: 2 * i_loc + 2,
+                        2 * j_loc: 2 * j_loc + 2,
+                    ]
 
         return K_global
-    
-    def create_elements(self, material, tipo="Plane_strain", elem_map=None):
-       
-        #Instancia y devuelve la lista de objetos elemento asociados a la malla.
-        
-        # Mapa por defecto si no se pasa uno personalizado
+
+    def create_elements(self, elem_map=None):
+        """Instancia los elementos usando el material y tipo de cada uno."""
         if elem_map is None:
             from source.elements.elements import tri_cst, tri_lst, quad_q4, quad_q8, quad_q9
 
             elem_map = {
-                "cst": tri_cst,
-                "tri3": tri_cst,
-                "lst": tri_lst,
-                "tri6": tri_lst,
-                "q4": quad_q4,
-                "quad4": quad_q4,
-                "q8": quad_q8,
-                "quad8": quad_q8,
-                "q9": quad_q9,
-                "quad9": quad_q9,
+                "cst": tri_cst, "tri3": tri_cst,
+                "lst": tri_lst, "tri6": tri_lst,
+                "q4": quad_q4, "quad4": quad_q4,
+                "q8": quad_q8, "quad8": quad_q8,
+                "q9": quad_q9, "quad9": quad_q9,
             }
 
         coord_global = np.array([[node.x, node.y] for node in self.nodes])
         elements = []
 
         for i in range(self.number_of_elements()):
-            g_id = self.element_global_ids[i]
-            elem_type = self.element_types[i].lower()
+            material, tipo = self.materials[self.element_materials[i]]
             conn = self.connectivity[i]
+            cls = elem_map[self.element_types[i]]
 
-            cls = elem_map[elem_type]
-            elem = cls(g_id, conn, material, tipo)
+            elem = cls(self.element_global_ids[i], conn, material, tipo)
             elem.coord_node = coord_global[conn]
             elements.append(elem)
 
         return elements
+    
+if __name__ == "__main__":
+
+    mesh = Mesh()
+
+    archivo = Path(__file__).resolve().parents[2] / "meshes" / "represa.txt"
+
+    mesh.read(archivo)
+
+    print("Archivo leído correctamente")
+    print("Cantidad de nodos:", mesh.number_of_nodes())
+    print("Cantidad de elementos:", mesh.number_of_elements())
+    print("Dimensión:", mesh.dim)
+    print("Materiales:", mesh.materials)
+    print("Tipos de elementos:", set(mesh.element_types))
+
+    print("\nPrimeros 5 nodos:")
+    for nodo in mesh.nodes[:5]:
+        print(nodo.x, nodo.y)
+
+    print("\nPrimeras 5 conectividades:")
+    for conn in mesh.connectivity[:5]:
+        print(conn)
