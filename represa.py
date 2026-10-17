@@ -11,8 +11,8 @@ from source.systems.loads import surface_load_2d,body_load_2d
 
 # Script principal de analisis de la represa
 
-malla = 'represa.txt'
-output = 'represa.vtu'
+malla = "represa_Q4_gruesa.txt"
+output = "represa_Q4_gruesa.vtu" 
 orden = 2
 g = 9.81
 h_agua = 27
