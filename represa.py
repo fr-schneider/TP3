@@ -7,7 +7,7 @@ from source.mesh.mesh import Mesh
 from source.materials.linear_elastic import LinearElastic
 from source.output.paraview_2d import write_results_2d
 from source.systems.boundary_conditions import robin_soil_stiffness_2d
-from source.systems.loads import surface_load_2d
+from source.systems.loads import surface_load_2d,body_load_2d
 
 # Script principal de analisis de la represa
 
@@ -15,11 +15,14 @@ malla = 'represa.txt'
 output = 'represa.vtu'
 orden = 2
 g = 9.81
-h_agua = 25
+h_agua = 27
 rho_agua = 1000
 rho_hormigon = 2300
-k_suelo = [200, 500]  # k_horizontal, k_vertical
+k_suelo = [2e8, 2e9]  # k_horizontal, k_vertical
 tipo = 'Plane_strain'
+Robin_BC=False
+orden=2
+tol=10e-3
 
 
 ## CONFIGURACIÓN DE RUTAS Y CARPETAS
@@ -53,54 +56,9 @@ n_dofs = mesh.number_of_dofs()
 coord_global = np.array([[node.x, node.y] for node in mesh.nodes])
 
 
-# Creacion de Kglobal e incorporacion de Krobin
+# Creacion de Kglobal
 
 K_global = mesh.assemble_stiffness(elements, 2)
-Krobin_Global = np.zeros_like(K_global)
-
-
-# Condiciones de Robin sobre nodos y = 0
-
-y_min = min(node.y for node in mesh.nodes)
-
-for elemento in elements:
-
-    coord_node = coord_global[elemento.node]
-
-    base_local_nodes = [
-        loc_idx for loc_idx, g_id in enumerate(elemento.node)
-        if np.isclose(mesh.node(g_id).y, y_min)
-    ]
-
-    if len(base_local_nodes) >= 2:
-
-        base_sorted = sorted(
-            base_local_nodes,
-            key=lambda i: mesh.node(elemento.node[i]).x
-        )
-
-        Ke_robin = robin_soil_stiffness_2d(
-            elemento, coord_node, base_sorted, k_suelo, orden=orden
-        )
-
-        for i_loc, g_node_i in enumerate(elemento.node):
-
-            dofs_i = mesh.node_global_dofs(g_node_i)
-
-            for j_loc, g_node_j in enumerate(elemento.node):
-
-                dofs_j = mesh.node_global_dofs(g_node_j)
-
-                Krobin_Global[np.ix_(dofs_i, dofs_j)] += Ke_robin[
-                    2*i_loc:2*i_loc+2,
-                    2*j_loc:2*j_loc+2
-                ]
-
-
-# Sumar Robin una sola vez
-
-K_global += Krobin_Global
-
 
 ## Cargas
 
@@ -108,132 +66,132 @@ F_global = np.zeros(n_dofs)
 
 
 # Peso propio
-
-for elemento in elements:
-
-    nodes = elemento.node
-    coords = coord_global[nodes]
-
-    x, y = coords[:, 0], coords[:, 1]
-
-    area = 0.5 * np.abs(
-        np.dot(x, np.roll(y, 1)) -
-        np.dot(y, np.roll(x, 1))
+for elem in elements:
+ 
+    coord_node = coord_global[elem.node]
+ 
+    fe_peso = body_load_2d(
+        elem, coord_node, [0.0, -rho_hormigon * g], 1, orden
     )
-
-    peso_nodo = (rho_hormigon * g * area) / len(nodes)
-
-    for g_id in nodes:
-
-        dof_y = mesh.node_global_dofs(g_id)[1]
-        F_global[dof_y] -= peso_nodo
+ 
+    for i_loc, g_id in enumerate(elem.node):
+        F_global[mesh.node_global_dofs(g_id)] += fe_peso[2*i_loc:2*i_loc+2]
 
 
 # Presion de agua
-
 x_min = min(node.x for node in mesh.nodes)
-
+y_min = min(node.y for node in mesh.nodes)
+y_agua = y_min + h_agua
+ 
 for elem in elements:
-
+ 
     coord_node = coord_global[elem.node]
-
-    water_local_nodes = [
-        loc_idx for loc_idx, g_id in enumerate(elem.node)
-        if np.isclose(mesh.node(g_id).x, x_min)
-        and mesh.node(g_id).y <= h_agua
-    ]
-
-    if len(water_local_nodes) >= 2:
-
-        water_sorted = sorted(
-            water_local_nodes,
-            key=lambda i: mesh.node(elem.node[i]).y
-        )
-
-        traction_nodes = []
-
-        for loc_idx in water_sorted:
-
-            y_node = mesh.node(elem.node[loc_idx]).y
-            p_hydro = rho_agua * g * (h_agua - y_node)
-
-            traction_nodes.append([p_hydro, 0.0])
-
-        traction_nodes = np.array(traction_nodes)
-
-        fe_water = surface_load_2d(
-            elem, coord_node, water_sorted, traction_nodes
-        )
-
-        if fe_water is not None:
-
-            fe_water = fe_water.flatten()
-
+ 
+    nv = 3 if elem.n_node in (3, 6) else 4
+ 
+    for k in range(nv):
+ 
+        # borde k: [vertice, vertice, medio] (el medio solo en elementos de orden 2)
+        water_nodes = [k, (k + 1) % nv]
+        if elem.n_node > nv:
+            water_nodes.append(nv + k)
+ 
+        y_borde = coord_node[water_nodes, 1]
+ 
+        if all(abs(coord_node[water_nodes, 0] - x_min) < tol) and all(y_borde <= y_agua + tol):
+ 
+            p_hydro = rho_agua * g * np.maximum(y_agua - y_borde, 0.0)
+            traction_nodes = np.column_stack((p_hydro, np.zeros_like(p_hydro)))
+ 
+            fe_water = surface_load_2d(
+                elem, coord_node, water_nodes, traction_nodes, espesor=1
+            )
+ 
             for i_loc, g_id in enumerate(elem.node):
-
-                dofs = mesh.node_global_dofs(g_id)
-
-                F_global[dofs] += fe_water[
-                    2*i_loc:2*i_loc+2
-                ]
+                F_global[mesh.node_global_dofs(g_id)] += fe_water[2*i_loc:2*i_loc+2]
 
 
-# Presion en los bordes parcialmente sumergidos
-# BLOQUE MOVIDO: ahora esta antes de calcular D
+K_solido = K_global.copy()   # rigidez del sólido, sin Robin ni Dirichlet
+F_cargas = F_global.copy()   # cargas externas (peso + agua), sin modificar
 
-for elem in elements:
 
-    coord_node = coord_global[elem.node]
+#Condiciones de borde
 
-    for i, j in [(0, 1), (1, 2), (2, 0)]:
+if Robin_BC:
+    Krobin_Global = np.zeros_like(K_global)
 
-        if not (
-            np.isclose(coord_node[i, 0], x_min)
-            and np.isclose(coord_node[j, 0], x_min)
-        ):
-            continue
+    # Condiciones de Robin sobre nodos y = 0
+    for elemento in elements:
 
-        yi = coord_node[i, 1]
-        yj = coord_node[j, 1]
+        coord_node = coord_global[elemento.node]
 
-        if not (min(yi, yj) < h_agua < max(yi, yj)):
-            continue
+        base_local_nodes = [
+            loc_idx for loc_idx, g_id in enumerate(elemento.node)
+            if np.isclose(mesh.node(g_id).y, y_min)
+        ]
 
-        if yi > yj:
-            i, j = j, i
-            yi, yj = yj, yi
+        if len(base_local_nodes) >= 2:
 
-        fraccion = (h_agua - yi) / (yj - yi)
-        L = np.linalg.norm(coord_node[j] - coord_node[i])
+            base_sorted = sorted(
+                base_local_nodes,
+                key=lambda i: mesh.node(elemento.node[i]).x
+            )
 
-        fe_water = np.zeros(elem.ndofs)
+            Ke_robin = robin_soil_stiffness_2d(
+                elemento, coord_node, base_sorted, k_suelo, orden
+            )
 
-        puntos, pesos = np.polynomial.legendre.leggauss(2)
+            for i_loc, g_node_i in enumerate(elemento.node):
 
-        for xi, wi in zip(puntos, pesos):
+                dofs_i = mesh.node_global_dofs(g_node_i)
 
-            s = fraccion * (xi + 1) / 2
+                for j_loc, g_node_j in enumerate(elemento.node):
 
-            y = yi + s * (yj - yi)
+                    dofs_j = mesh.node_global_dofs(g_node_j)
 
-            presion = rho_agua * g * (h_agua - y)
+                    Krobin_Global[np.ix_(dofs_i, dofs_j)] += Ke_robin[
+                        2*i_loc:2*i_loc+2,
+                        2*j_loc:2*j_loc+2
+                    ]
 
-            dF = presion * L * fraccion * wi / 2
 
-            fe_water[2*i] += (1-s) * dF
-            fe_water[2*j] += s * dF
+        # Sumar Robin
 
-        for i_loc, g_id in enumerate(elem.node):
+    K_global += Krobin_Global
 
-            dofs = mesh.node_global_dofs(g_id)
+else: #aplicar v=0 en todo x, y min, y u=0 en x_max, y min
+    base_nodes = [node for node in mesh.nodes if np.isclose(node.y, y_min)]
 
-            F_global[dofs] += fe_water[
-                2*i_loc:2*i_loc+2
-            ]
+        # Seleccionamos el nodo en x_máx sobre la base para restringir u
+    node_xmax_ymin = max(base_nodes, key=lambda node: node.x)
+
+    fixed_dofs = []
+
+        #Fijar v = 0 para todos los nodos de la base
+    for node in base_nodes:
+        dofs = mesh.node_global_dofs(node.global_id)
+        fixed_dofs.append(dofs[1])  # dof de v (dirección y)
+
+        #  Fijar u = 0 en x_max, y_min para evitar traslación rígida horizontal
+    dofs_pin = mesh.node_global_dofs(node_xmax_ymin.global_id)
+    fixed_dofs.append(dofs_pin[0])  # dof de u (dirección x)
+
+        # Aplicación de restricciones fijando 1.0 en la diagonal de K_global tipo apply_dirichlet_bc
+    for dof in set(fixed_dofs):
+        K_global[dof, :] = 0.0
+        K_global[:, dof] = 0.0
+        K_global[dof, dof] = 1.0
+        F_global[dof] = 0.0
+
+
+
+## Cargas
+
+
 
 
 ## Resolucion K*D=F
-# Ahora F_global incluye TODA la presion del agua
+
 
 D = np.linalg.solve(K_global, F_global)
 
@@ -248,48 +206,36 @@ sigma_nodal = mesh.compute_nodal_stresses(elements, D, tipo)
 write_results_2d(output_path_str, mesh, D, sigma_nodal)
 
 
-# MOMENTOS TEORICOS DE LA REPRESA
 
-H = 30.0
-B = 18.0
-C = 3.0
+## Estabilidad al vuelco: calculo teorico con la geometria de la malla
+# Seccion: trapecio con paramento de aguas arriba vertical (x = x_min), corona de ancho
+# "corona" y talud de aguas abajo recto hasta el pie (x_max, y_min)
 
-# Area de la seccion
+x_pie = coord_global[:, 0].max()
+y_top = coord_global[:, 1].max()
 
-A_rect = C * H
-A_tri = (B - C) * H / 2
+altura = y_top - y_min
+base = x_pie - x_min
+corona = coord_global[np.abs(coord_global[:, 1] - y_top) < tol, 0].max() - x_min
+h_mojada = min(h_agua, altura)
+
+# Area y centro de gravedad (x medido desde el paramento de aguas arriba)
+
+A_rect = corona * altura
+A_tri = (base - corona) * altura / 2
 A_total = A_rect + A_tri
 
-# Centro de gravedad
+x_G = (A_rect * corona / 2 + A_tri * (corona + (base - corona) / 3)) / A_total
 
-x_G = (
-    A_rect * (C / 2)
-    + A_tri * (C + (B - C) / 3)
-) / A_total
-
-# Peso de la represa por metro longitudinal
+# Peso y empuje por metro longitudinal
 
 W = rho_hormigon * g * A_total
+F_agua = rho_agua * g * h_mojada**2 / 2
 
-# Momento estabilizante respecto del pie
+# Momentos respecto del pie
 
-brazo_peso = B - x_G
-M_estabilizante = W * brazo_peso
-
-# Fuerza resultante del agua
-
-F_agua = rho_agua * g * h_agua**2 / 2
-
-# Altura de aplicacion de la fuerza del agua
-
-y_agua = h_agua / 3
-
-# Momento desestabilizante respecto del pie
-
-M_desestabilizante = F_agua * y_agua
-
-# Factor de seguridad al vuelco
-
+M_estabilizante = W * (base - x_G)
+M_desestabilizante = F_agua * h_mojada / 3
 FS = M_estabilizante / M_desestabilizante
 
 print("\nRESULTADOS DE ESTABILIDAD")
@@ -299,29 +245,17 @@ print("Momento desestabilizante:", M_desestabilizante, "N.m/m")
 print("Factor de seguridad:", FS)
 
 
-# VERIFICACION CON REACCIONES ROBIN
+# VERIFICACION CON REACCIONES DEL SUELO
+# Reaccion = fuerza del suelo sobre la represa = K*D - F (sirve para Robin y para apoyo fijo)
 
-R_robin = -Krobin_Global @ D
+R = K_solido @ D - F_cargas
 
-x_pie = max(
-    node.x for node in mesh.nodes
-    if np.isclose(node.y, y_min)
-)
+base_idx = np.abs(coord_global[:, 1] - y_min) < tol
 
-M_reacciones = 0.0
+M_reacciones = np.sum((coord_global[base_idx, 0] - x_pie) * R[1::2][base_idx])
 
-for nodo in mesh.nodes:
-
-    if np.isclose(nodo.y, y_min):
-
-        i = nodo.global_id
-
-        brazo = nodo.x - x_pie
-
-        Ry = R_robin[2*i + 1]
-
-        M_reacciones += brazo * Ry
-
+print("Suma de Ry:", R[1::2].sum(), "(peso:", W, ")")
+print("Suma de Rx:", R[0::2].sum(), "(empuje:", -F_agua, ")")
 print("Momento de las reacciones:", M_reacciones)
 
 
