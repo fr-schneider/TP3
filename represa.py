@@ -11,8 +11,8 @@ from source.systems.loads import surface_load_2d,body_load_2d
 
 # Script principal de analisis de la represa
 
-malla = "Represa_Q8_ModificacionCombinada.txt"
-output = "Represa_Q8_ModificacionCombinada.vtu" 
+malla = "Represa_Q8.txt"
+output = "Represa_Q8.vtu" 
 orden = 2
 g = 9.81
 h_agua = 28
