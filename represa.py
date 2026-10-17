@@ -11,13 +11,13 @@ from source.systems.loads import surface_load_2d,body_load_2d
 
 # Script principal de analisis de la represa
 
-malla = "represa_Q4_gruesa.txt"
-output = "represa_Q4_gruesa.vtu" 
+malla = "Represa_Q8_ModificacionCombinada.txt"
+output = "Represa_Q8_ModificacionCombinada.vtu" 
 orden = 2
 g = 9.81
-h_agua = 27
+h_agua = 28
 rho_agua = 1000
-rho_hormigon = 2300
+rho_hormigon = 2400
 k_suelo = [2e8, 2e9]  # k_horizontal, k_vertical
 tipo = 'Plane_strain'
 Robin_BC=False
@@ -51,7 +51,9 @@ for mid in mesh.materials:
     mesh.materials[mid] = (material, tipo)
 
 elements = mesh.create_elements()
-
+print("Tipos de elementos:", set(mesh.element_types))
+print("Cantidad de elementos:", len(elements))
+print("Cantidad de nodos:", len(mesh.nodes))
 n_dofs = mesh.number_of_dofs()
 coord_global = np.array([[node.x, node.y] for node in mesh.nodes])
 
@@ -185,13 +187,6 @@ else: #aplicar v=0 en todo x, y min, y u=0 en x_max, y min
 
 
 
-## Cargas
-
-
-
-
-## Resolucion K*D=F
-
 
 D = np.linalg.solve(K_global, F_global)
 
@@ -199,7 +194,14 @@ D = np.linalg.solve(K_global, F_global)
 ## Calculo tensiones
 
 sigma_nodal = mesh.compute_nodal_stresses(elements, D, tipo)
+print("\nRANGO DE TENSIONES")
 
+for nombre, valores in sigma_nodal.items():
+    print(
+        nombre,
+        "min =", np.min(valores),
+        "max =", np.max(valores)
+    )
 
 ## Exportacion a ParaView
 
